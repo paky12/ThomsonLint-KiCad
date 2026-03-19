@@ -41,7 +41,7 @@ def cmd_export(args):
     from kicad.exporters.sch_exporter import export_schematic
     from kicad.exporters.brd_exporter import export_board
     from kicad.kicad_cli import KiCadCLI, KiCadCLIError
-    from kicad.parsers.netlist_parser import parse_netlist
+    from kicad.parsers.netlist_parser import parse_netlist_xml_with_directions
 
     sch_path, pcb_path = _find_project_files(args.project)
 
@@ -65,7 +65,13 @@ def cmd_export(args):
                 with tempfile.NamedTemporaryFile(suffix=".xml", delete=False) as tf:
                     netlist_tmp = tf.name
                 cli.export_netlist(sch_path, netlist_tmp)
-                nets_from_netlist = parse_netlist(netlist_tmp)
+                nets_from_netlist, pin_dirs = parse_netlist_xml_with_directions(netlist_tmp)
+                # Update component pin directions from netlist
+                for comp in sch.components:
+                    for pin in comp.pins:
+                        key = (comp.ref, pin.number)
+                        if key in pin_dirs:
+                            pin.direction = pin_dirs[key]
                 sch = sch.__class__(
                     components=sch.components,
                     nets=nets_from_netlist,
