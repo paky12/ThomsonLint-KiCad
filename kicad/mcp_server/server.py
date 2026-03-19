@@ -25,17 +25,25 @@ def export_kicad_project_impl(project_path: str) -> dict:
     from kicad.exporters.sch_exporter import export_schematic
     from kicad.exporters.brd_exporter import export_board
     from kicad.kicad_cli import KiCadCLI, KiCadCLIError
-    from kicad.parsers.netlist_parser import parse_netlist
+    from kicad.parsers.netlist_parser import parse_netlist_xml_with_directions
 
     p = Path(project_path)
     result: dict = {}
 
-    # Resolve sch/pcb paths
+    # Resolve sch/pcb paths (prefer .kicad_pro for root schematic name)
     if p.is_dir():
-        sch_files = list(p.glob("*.kicad_sch"))
-        pcb_files = list(p.glob("*.kicad_pcb"))
-        sch_path = str(sch_files[0]) if sch_files else None
-        pcb_path = str(pcb_files[0]) if pcb_files else None
+        pro_files = list(p.glob("*.kicad_pro"))
+        if pro_files:
+            base = pro_files[0].parent / pro_files[0].stem
+            sch_candidate = base.with_suffix(".kicad_sch")
+            pcb_candidate = base.with_suffix(".kicad_pcb")
+            sch_path = str(sch_candidate) if sch_candidate.exists() else None
+            pcb_path = str(pcb_candidate) if pcb_candidate.exists() else None
+        else:
+            sch_files = list(p.glob("*.kicad_sch"))
+            pcb_files = list(p.glob("*.kicad_pcb"))
+            sch_path = str(sch_files[0]) if sch_files else None
+            pcb_path = str(pcb_files[0]) if pcb_files else None
     elif p.suffix == ".kicad_sch":
         sch_path, pcb_path = str(p), None
     elif p.suffix == ".kicad_pcb":
@@ -56,10 +64,16 @@ def export_kicad_project_impl(project_path: str) -> dict:
         cli = KiCadCLI()
         if cli.is_available():
             try:
-                with tempfile.NamedTemporaryFile(suffix=".xml", delete=False) as tf:
-                    netlist_tmp = tf.name
+                # Use project dir for temp file — Flatpak can't write to /tmp
+                sch_dir = str(Path(sch_path).parent)
+                netlist_tmp = os.path.join(sch_dir, f".thomsonlint_netlist_{os.getpid()}.xml")
                 cli.export_netlist(sch_path, netlist_tmp)
-                nets = parse_netlist(netlist_tmp)
+                nets, pin_dirs = parse_netlist_xml_with_directions(netlist_tmp)
+                for comp in sch.components:
+                    for pin in comp.pins:
+                        key = (comp.ref, pin.number)
+                        if key in pin_dirs:
+                            pin.direction = pin_dirs[key]
                 sch = sch.__class__(
                     components=sch.components,
                     nets=nets,

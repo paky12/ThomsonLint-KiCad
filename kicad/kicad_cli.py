@@ -8,6 +8,14 @@ class KiCadCLIError(Exception):
 
 
 class KiCadCLI:
+    """Wrapper around kicad-cli subprocess calls.
+
+    If KiCad is installed via Flatpak, output paths must be within the user's
+    home directory. The Flatpak sandbox cannot write to /tmp on the host.
+    Callers should use project-relative paths or tempfile with dir= pointing
+    to an accessible directory.
+    """
+
     def __init__(self, kicad_cli_path: str = "kicad-cli"):
         self._cli = kicad_cli_path
 
