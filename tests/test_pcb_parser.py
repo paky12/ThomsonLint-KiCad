@@ -62,6 +62,29 @@ def test_layers():
     assert "B.Cu" in layer_names
 
 
+def test_layer_count_excludes_non_copper():
+    """Unused copper layer slots (user type) should not be counted."""
+    from kicad.parsers.pcb_parser import _parse_layers
+    # Simulate a 4-layer board where KiCad defines 20+ layer slots
+    nodes = [["layers",
+        [0, "F.Cu", "signal"],
+        [1, "In1.Cu", "signal"],
+        [2, "In2.Cu", "power"],
+        [31, "B.Cu", "mixed"],
+        [32, "B.Adhes", "user"],
+        [33, "F.Adhes", "user"],
+        [34, "B.Paste", "user"],
+        [36, "B.SilkS", "user"],
+        [44, "Edge.Cuts", "user"],
+        # Some KiCad files list unused inner copper layers as "user" type
+        [3, "In3.Cu", "user"],
+        [4, "In4.Cu", "user"],
+        [5, "In5.Cu", "user"],
+    ]]
+    layers, count = _parse_layers(nodes)
+    assert count == 4  # Only F.Cu, In1.Cu, In2.Cu, B.Cu are actual copper
+
+
 def test_nets():
     board = parse_pcb(FIXTURE_PCB)
     assert len(board.nets) > 0

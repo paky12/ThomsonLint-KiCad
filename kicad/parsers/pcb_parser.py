@@ -53,8 +53,8 @@ def _parse_layers(nodes: list) -> tuple[list[Layer], int]:
         name = item[1] if isinstance(item[1], str) else str(item[1])
         layer_type = item[2] if isinstance(item[2], str) else str(item[2])
         layers.append(Layer(number=int(num), name=name, type=layer_type))
-        # Count copper layers (layer numbers 0–31 are copper in KiCad)
-        if 0 <= int(num) <= 31:
+        # Count copper layers by type (signal, power, or mixed)
+        if layer_type in ("signal", "power", "mixed"):
             copper_count += 1
 
     return layers, max(copper_count, 2)
