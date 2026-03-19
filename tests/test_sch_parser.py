@@ -38,3 +38,32 @@ def test_dnp_component():
     dnp = [c for c in sch.components if not c.populate]
     for c in dnp:
         assert c.populate is False
+
+
+def test_dnp_no_means_populate_true(tmp_path):
+    """KiCad 9 uses (dnp no) for normal components, (dnp yes) for DNP."""
+    sch_content = """(kicad_sch (version 20231120) (generator "test")
+      (lib_symbols)
+      (symbol (lib_id "Device:R") (at 0 0 0) (unit 1)
+        (dnp no)
+        (property "Reference" "R1")
+        (property "Value" "10k")
+        (property "Footprint" "Resistor_SMD:R_0603_1608Metric")
+        (pin "1" (uuid "a1"))
+        (instances (project "test" (path "/" (reference "R1") (unit 1))))
+      )
+      (symbol (lib_id "Device:R") (at 0 0 0) (unit 1)
+        (dnp yes)
+        (property "Reference" "R2")
+        (property "Value" "10k")
+        (property "Footprint" "Resistor_SMD:R_0603_1608Metric")
+        (pin "1" (uuid "a2"))
+        (instances (project "test" (path "/" (reference "R2") (unit 1))))
+      )
+    )"""
+    sch_file = tmp_path / "test.kicad_sch"
+    sch_file.write_text(sch_content)
+    sch = parse_schematic(str(sch_file))
+    comps = {c.ref: c for c in sch.components}
+    assert comps["R1"].populate is True   # dnp no → populate
+    assert comps["R2"].populate is False  # dnp yes → do not populate

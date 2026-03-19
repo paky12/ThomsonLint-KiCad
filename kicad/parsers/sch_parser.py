@@ -66,7 +66,9 @@ def _parse_symbol(node: list) -> Component | None:
             pins.append(pin)
 
         elif child[0] == "dnp":
-            is_dnp = True
+            # KiCad 9: (dnp yes) = do not populate, (dnp no) = populate
+            # KiCad 8: bare (dnp) = do not populate
+            is_dnp = len(child) < 2 or str(child[1]).lower() != "no"
 
     ref = props.get("Reference", "")
     if not ref or ref.startswith("#"):
