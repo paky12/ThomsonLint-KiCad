@@ -83,7 +83,7 @@ kicad/
   kicad_cli.py          # Wrapper around kicad-cli subprocess calls
   cli.py                # CLI entry point (export, serve, report)
   mcp_server/
-    server.py           # MCP server with 4 tools (export, review context, report, DRC)
+    server.py           # MCP server with 3 tools (export, review context, report)
 ```
 
 ### Data flow
