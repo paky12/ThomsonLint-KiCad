@@ -17,6 +17,9 @@ dev = [
 [project.scripts]
 thomsonlint = "kicad.cli:main"
 
+[tool.hatch.build.targets.wheel]
+packages = ["kicad"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
