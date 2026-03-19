@@ -1,83 +1,142 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code when working with this repository.
 
-## Project Overview
+## What This Is
 
-ThomsonLint is a knowledge and rule framework for AI-assisted hardware design review. It provides structured, machine-readable resources that enable AI models (primarily Gemini) to analyze and identify potential issues in hardware designs (schematics and PCB layouts).
+ThomsonLint-KiCad is a fork of [ThomsonLint](https://github.com/holla2040/ThomsonLint) that adds native KiCad export support. It's an AI-powered hardware design review framework: export KiCad schematic + PCB data, run it through 158 engineering rules, get actionable findings.
 
-The framework is named after J.J. Thomson, discoverer of the electron, reflecting its goal of uncovering fundamental issues in hardware designs.
-
-## Core Components
-
-- **`ontology/ontology.json`** - Machine-readable JSON defining rules, domains, severity levels, and failure modes for hardware design review
-- **`examples/examples.json`** - Practical examples (good and bad) that map to ontology rules, used for training/testing AI understanding
-- **`docs/AI_Hardware_Design_Review_KnowledgeBase.md`** - Human-readable explanations and context for the ontology rules
-- **`docs/Multi_Agent_Reasoning_Spec.md`** - Specification for multi-agent architecture (Power/SMPS, High-Speed SI, Analog, EMC/ESD, Thermal/Mechanical agents)
+The fork adds a `kicad/` Python package (parsers, analyzers, exporters) and an MCP server. The upstream knowledge base (ontology, rules, examples, report generator) is kept unchanged.
 
 ## Commands
 
-### Validate JSON files
 ```bash
-pip install jsonschema  # if not installed
-python validate_json.py
-```
+# Install dependencies
+uv sync
 
-### Generate review instructions file
-```bash
+# Run all tests
+uv run pytest tests/ -v
+
+# Run a single test file
+uv run pytest tests/test_net_classifier.py -v
+
+# Run with coverage
+uv run pytest --cov=kicad --cov-report=html tests/
+
+# Export a KiCad project to ThomsonLint JSON
+uv run thomsonlint export path/to/project.kicad_pro --output ./exports/
+
+# Start the MCP server
+uv run thomsonlint serve
+
+# Generate HTML report from findings
+uv run thomsonlint report findings.json --output ./exports/
+
+# Validate upstream JSON files (ontology, examples)
+uv run python validate_json.py
+
+# Regenerate review_instructions.txt (after modifying ontology/KB/examples)
 ./gen_context.sh > review_instructions.txt
 ```
 
-### Generate HTML review report
-```bash
-python tools/gen_report.py exports/<project_name>-findings.json [--output exports/]
+## Architecture
+
 ```
-Takes a findings JSON file (see `tests/findings_schema.json` for the schema) and generates a self-contained HTML report at `exports/<project_name>-review.html`. The report provides an interactive checklist where users can triage each finding as Open/Accept/Ignore, with statuses persisted in browser localStorage.
-
-## Pre-Commit Requirement
-
-**Before every commit**, regenerate the `review_instructions.txt` file:
-```bash
-./gen_context.sh > review_instructions.txt
+kicad/
+  parsers/
+    sexpr.py           # S-expression tokenizer → nested Python lists
+    sch_parser.py       # .kicad_sch → Schematic dataclass (recursive for hierarchical)
+    pcb_parser.py       # .kicad_pcb → Board dataclass
+    netlist_parser.py   # kicad-cli netlist XML → Net objects + pin directions
+  models/
+    schematic.py        # Pin, Component, Net, Sheet, Schematic
+    board.py            # Pad, Footprint, TrackSegment, Via, Zone, BoardOutline, Layer, Hole, Board
+  analyzers/
+    net_classifier.py   # Power/ground/clock/differential detection, component type classification
+    sch_analyzer.py     # Floating inputs, single-pin nets, diff pairs, net lists
+    brd_analyzer.py     # Trace stats, decoupling proximity, edge distances, ground planes
+  exporters/
+    sch_exporter.py     # Schematic + analysis → ThomsonLint JSON
+    brd_exporter.py     # Board + analysis → ThomsonLint JSON
+  kicad_cli.py          # Wrapper around kicad-cli subprocess calls
+  cli.py                # CLI entry point (export, serve, report)
+  mcp_server/
+    server.py           # MCP server with 3 tools (export, review context, report)
 ```
 
-This ensures `review_instructions.txt` is always up-to-date in the repository, allowing users to immediately use it with their design files without needing to run any scripts.
+### Data flow
 
-## File Modification Guidelines (from TODO.md)
+```
+KiCad .kicad_pro
+  ├─ kicad-cli → netlist XML, BOM, positions (structured CLI output)
+  ├─ .kicad_sch → sexpr parser → sch_parser → Schematic dataclass
+  └─ .kicad_pcb → sexpr parser → pcb_parser → Board dataclass
+        │
+        ├─ sch_analyzer → floating inputs, diff pairs, net classification
+        └─ brd_analyzer → trace lengths, decoupling proximity, edge distances
+              │
+              ├─ sch_exporter → *-thomson-export-sch.json
+              └─ brd_exporter → *-thomson-export-brd.json
+                    │
+                    └─ Claude Code + review_instructions.txt → findings.json → HTML report
+```
 
-When modifying files in this repo:
+### Dual-source strategy
 
-1. **JSON files must contain pure JSON only** - no Markdown headings, commentary, or code fences
-2. **Output full file contents** when updating, not diffs
-3. **Preserve valid syntax** - ontology.json and examples.json must remain valid JSON
-4. **Be explicit** about which file you are updating
-5. **Stay conservative about deleting** - prefer appending/expanding over removing unless explicitly told to refactor
+- **kicad-cli** provides: netlist (authoritative net connectivity), BOM, component positions, drill data, DRC
+- **Direct .kicad_sch/.kicad_pcb parsing** provides: pin directions, trace lengths, via counts per net, zone pours, pad coordinates, board outline, layer stackup — data CLI can't export
 
-## Extending the Framework
+### Key design decisions
 
-When adding new rules or examples:
-1. Add entries to `ontology/ontology.json` or `examples/examples.json` following existing structure
-2. Update `docs/AI_Hardware_Design_Review_KnowledgeBase.md` if context is needed for new rules
-3. Run `python validate_json.py` to validate changes
+- **Multi-char prefixes checked before single-char** in component classification (`FB` before `F`, `TP` before `T`) — fixes a bug in the upstream Fusion ULP
+- **Pin directions mapped to ULP short strings** in export JSON: `input→IN`, `output→OUT`, `bidirectional→IO`, `passive→PAS`, `power_in→PWR`, `power_out→SUP`
+- **`trace_segments` only present** on high-speed/clock/differential nets (conditionally omitted for others)
+- **MCP package lives at `kicad/mcp_server/`** not `mcp/` — avoids shadowing the `mcp` PyPI package
+- **Schematic nets come from kicad-cli** (`sch export netlist`), not from direct parsing — the `.kicad_sch` parser only extracts component/pin metadata
 
-### Ontology Rule Structure
-Each rule includes: `id`, `name`, `domain`, `description`, `applies_to`, `conditions`, `default_severity`, `failure_modes`, `recommended_actions`, `kb_references`
+## Upstream files (do not modify)
 
-### Example Structure
-Each example includes: `id`, `title`, `description`, `triggered_rules`, `expected_issue`
+These are kept in sync with `holla2040/ThomsonLint` upstream:
 
-## JSON Schemas
+- `ontology/ontology.json` — 158 rules across 10 domains
+- `docs/AI_Hardware_Design_Review_KnowledgeBase.md` — engineering knowledge base
+- `examples/examples.json` — 16 example scenarios
+- `tools/gen_report.py` — HTML report generator
+- `tools/fusion-electronics-export.ulp` — Fusion Electronics exporter (kept for upstream compat)
+- `review_instructions.txt` — pre-generated AI review prompt (~214KB)
+- `validate_json.py` — JSON schema validator
+- `gen_context.sh` — review instructions generator
+- `tests/ontology_schema.json`, `tests/examples_schema.json`, `tests/findings_schema.json`
 
-- `tests/ontology_schema.json` - Schema for validating ontology.json
-- `tests/examples_schema.json` - Schema for validating examples.json
-- `tests/findings_schema.json` - Schema for validating findings JSON files
+To pull upstream updates: `git fetch upstream && git merge upstream/main`
 
-## Hardware Domain Coverage
+## Test layout
 
-The ontology covers these domains:
-- **Power/SMPS** - Decoupling, buck converter layout, component ratings, compensation networks
-- **High-Speed Digital (SI)** - DDR rules, differential pairs, impedance control, clock nets
-- **Analog/Mixed-Signal** - Op-amp stability, ADC drivers, sensor front-ends
-- **EMC/ESD** - External connector protection, EMI filtering, return paths, ground stitching
-- **Thermal/Mechanical** - Power density, thermal vias, connector reinforcement
-- **DFT/DFM** - Test points, silkscreen, fiducials
+```
+tests/
+  fixtures/              # Minimal KiCad 9 project (schematic + PCB + project file)
+  test_sexpr.py          # S-expression parser
+  test_net_classifier.py # Signal/component classification
+  test_sch_parser.py     # Schematic parser
+  test_pcb_parser.py     # PCB parser
+  test_netlist_parser.py # Netlist XML parser
+  test_sch_analyzer.py   # Schematic analysis
+  test_brd_analyzer.py   # Board analysis
+  test_sch_exporter.py   # Schematic export + schema validation
+  test_brd_exporter.py   # Board export + schema validation
+  test_kicad_cli.py      # kicad-cli wrapper (mocked)
+  test_mcp_server.py     # MCP server tools
+  sch_export_schema.json # JSON schema for schematic export
+  brd_export_schema.json # JSON schema for board export
+```
+
+## Git remotes
+
+- `origin` → `paky12/ThomsonLint-KiCad` (this fork)
+- `upstream` → `holla2040/ThomsonLint` (original)
+
+## System requirements
+
+- Python 3.10+
+- KiCad 8+ with `kicad-cli` on PATH
+- uv (Python package manager)
