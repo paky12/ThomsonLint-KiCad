@@ -20,8 +20,8 @@ def classify_net(name: str) -> NetClassification:
     result = NetClassification()
 
     power_patterns = [
-        "VCC", "VDD", "VBUS", "VIN", "VOUT", "VBAT", "VSYS",
-        "+3V", "+5V", "+12V", "+24V", "3V3", "5V0", "1V8", "1V2", "2V5", "PWR",
+        "VCC", "VDD", "VBUS", "VIN", "VOUT", "VBAT", "VSYS", "VREF",
+        "+3V", "+5V", "+12V", "+24V", "3V3", "3.3V", "5V0", "1V8", "1V2", "2V5", "PWR",
     ]
     for p in power_patterns:
         if p in upper:

@@ -31,6 +31,18 @@ class TestPowerNets:
         r = classify_net("vcc_mcu")
         assert r.is_power is True
 
+    def test_plus_3_3v(self):
+        cl = classify_net("+3.3V")
+        assert cl.is_power
+
+    def test_vref_plus(self):
+        cl = classify_net("VREF+")
+        assert cl.is_power
+
+    def test_vdda(self):
+        cl = classify_net("VDDA")
+        assert cl.is_power
+
 
 class TestGroundNets:
     def test_gnd(self):
