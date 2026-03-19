@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ThomsonLint Board Export",
+  "type": "object",
+  "required": ["thomsonlint_version", "export_date", "mode", "components", "board", "signals", "analysis"],
+  "properties": {
+    "thomsonlint_version": { "type": "string" },
+    "export_date": { "type": "string" },
+    "mode": { "type": "string", "const": "board" },
+    "components": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["ref", "x_mm", "y_mm", "side", "type"],
+        "properties": {
+          "ref": { "type": "string" },
+          "x_mm": { "type": "number" },
+          "y_mm": { "type": "number" },
+          "rotation": { "type": "number" },
+          "side": { "type": "string" },
+          "type": { "type": "string" },
+          "footprint": { "type": "string" }
+        }
+      }
+    },
+    "board": {
+      "type": "object",
+      "required": ["area", "layers_used", "layer_count", "holes", "polygons"],
+      "properties": {
+        "area": {
+          "type": "object",
+          "required": ["width_mm", "height_mm"],
+          "properties": {
+            "width_mm": { "type": "number" },
+            "height_mm": { "type": "number" }
+          }
+        },
+        "layers_used": { "type": "array", "items": { "type": "string" } },
+        "layer_count": { "type": "integer" },
+        "holes": { "type": "array", "items": { "type": "object" } },
+        "polygons": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["net_name", "layer"],
+            "properties": {
+              "net_name": { "type": "string" },
+              "layer": { "type": ["string", "integer"] }
+            }
+          }
+        }
+      }
+    },
+    "signals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "net_code", "trace_length_mm", "via_count"],
+        "properties": {
+          "name": { "type": "string" },
+          "net_code": { "type": "integer" },
+          "trace_length_mm": { "type": "number" },
+          "via_count": { "type": "integer" },
+          "min_width_mm": { "type": "number" },
+          "max_width_mm": { "type": "number" },
+          "trace_segments": { "type": "array" }
+        }
+      }
+    },
+    "analysis": {
+      "type": "object",
+      "required": ["component_edge_distances", "decoupling_proximity", "ground_plane_layers"],
+      "properties": {
+        "component_edge_distances": { "type": "array" },
+        "decoupling_proximity": { "type": "array" },
+        "ground_plane_layers": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}
