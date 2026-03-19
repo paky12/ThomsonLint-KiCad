@@ -22,6 +22,16 @@ Confirm `kicad-cli` is available:
 kicad-cli --version
 ```
 
+> **Flatpak users:** If you installed KiCad via Flatpak, `kicad-cli` won't be on your PATH even though the KiCad GUI works fine. Create a wrapper script:
+> ```bash
+> sudo tee /usr/local/bin/kicad-cli << 'EOF'
+> #!/bin/sh
+> exec flatpak run --command=kicad-cli org.kicad.KiCad "$@"
+> EOF
+> sudo chmod +x /usr/local/bin/kicad-cli
+> ```
+> Then retry `kicad-cli --version`.
+
 ## 2. CLI export test
 
 Pick a KiCad project you have locally. Run:

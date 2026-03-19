@@ -70,3 +70,12 @@ uv run pytest --cov=kicad --cov-report=html tests/
 ```
 
 Tests that need `kicad-cli` installed use mocked subprocess calls so they run anywhere.
+
+> **Flatpak users:** If you installed KiCad via Flatpak, `kicad-cli` won't be on your PATH. Create a wrapper:
+> ```bash
+> sudo tee /usr/local/bin/kicad-cli << 'EOF'
+> #!/bin/sh
+> exec flatpak run --command=kicad-cli org.kicad.KiCad "$@"
+> EOF
+> sudo chmod +x /usr/local/bin/kicad-cli
+> ```

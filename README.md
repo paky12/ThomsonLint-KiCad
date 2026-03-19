@@ -11,15 +11,30 @@ Analyzes your schematics and PCB layouts against 158 engineering rules covering 
 ```bash
 git clone git@github.com:paky12/ThomsonLint-KiCad.git
 cd ThomsonLint-KiCad
+bash install.sh
+```
+
+The installer handles everything: Python dependencies, `kicad-cli` setup (including Flatpak), and Claude Code MCP server configuration.
+
+Requires [uv](https://docs.astral.sh/uv/), **Python 3.10+**, and **KiCad 8+**.
+
+<details>
+<summary>Manual setup (if you prefer not to use the installer)</summary>
+
+```bash
 uv sync
 ```
 
-Requires [uv](https://docs.astral.sh/uv/), **Python 3.10+**, and **KiCad 8+** (with `kicad-cli` on PATH).
+**Flatpak users:** If you installed KiCad via Flatpak, `kicad-cli` won't be on your PATH. Create a wrapper script:
+```bash
+sudo tee /usr/local/bin/kicad-cli << 'EOF'
+#!/bin/sh
+exec flatpak run --command=kicad-cli org.kicad.KiCad "$@"
+EOF
+sudo chmod +x /usr/local/bin/kicad-cli
+```
 
-### 2. Use with Claude Code (recommended)
-
-Add the MCP server to your Claude Code config (`~/.claude/settings.json`):
-
+**Claude Code MCP server:** Add to `~/.claude/settings.json`:
 ```json
 {
   "mcpServers": {
@@ -30,6 +45,10 @@ Add the MCP server to your Claude Code config (`~/.claude/settings.json`):
   }
 }
 ```
+
+</details>
+
+### 2. Use with Claude Code (recommended)
 
 Then open Claude Code and ask:
 
@@ -109,7 +128,7 @@ When running as an MCP server (`thomsonlint serve`), three tools are available:
 
 - [**uv**](https://docs.astral.sh/uv/) — Python package manager
 - **Python 3.10+**
-- **KiCad 8+** with `kicad-cli` on PATH
+- **KiCad 8+** with `kicad-cli` on PATH (see Flatpak note above if installed via Flatpak)
 - **Claude Code** (for the MCP integration)
 
 Python dependencies (managed by uv):

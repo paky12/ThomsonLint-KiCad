@@ -21,7 +21,7 @@ class KiCadCLI:
         return result
 
     def export_netlist(self, sch_path: str, output_path: str) -> str:
-        self._run(["sch", "export", "netlist", "-o", output_path, sch_path])
+        self._run(["sch", "export", "netlist", "--format", "kicadxml", "-o", output_path, sch_path])
         return output_path
 
     def export_bom(self, sch_path: str, output_path: str) -> str:

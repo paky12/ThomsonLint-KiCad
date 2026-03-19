@@ -24,7 +24,15 @@ def _find_project_files(project_path: str) -> tuple[str | None, str | None]:
         return (str(sch) if sch.exists() else None,
                 str(pcb) if pcb.exists() else None)
     elif p.is_dir():
-        # Find first .kicad_sch and .kicad_pcb in directory
+        # Prefer .kicad_pro to derive the root schematic/PCB names
+        pro_files = list(p.glob("*.kicad_pro"))
+        if pro_files:
+            base = pro_files[0].parent / pro_files[0].stem
+            sch = base.with_suffix(".kicad_sch")
+            pcb = base.with_suffix(".kicad_pcb")
+            return (str(sch) if sch.exists() else None,
+                    str(pcb) if pcb.exists() else None)
+        # Fallback: find first .kicad_sch and .kicad_pcb in directory
         sch_files = list(p.glob("*.kicad_sch"))
         pcb_files = list(p.glob("*.kicad_pcb"))
         return (str(sch_files[0]) if sch_files else None,
@@ -62,8 +70,9 @@ def cmd_export(args):
         cli = KiCadCLI()
         if cli.is_available():
             try:
-                with tempfile.NamedTemporaryFile(suffix=".xml", delete=False) as tf:
-                    netlist_tmp = tf.name
+                # Use project dir for temp file — Flatpak can't write to /tmp
+                sch_dir = Path(sch_path).parent
+                netlist_tmp = str(sch_dir / f".thomsonlint_netlist_{os.getpid()}.xml")
                 cli.export_netlist(sch_path, netlist_tmp)
                 nets_from_netlist, pin_dirs = parse_netlist_xml_with_directions(netlist_tmp)
                 # Update component pin directions from netlist
@@ -83,7 +92,8 @@ def cmd_export(args):
                 print(f"  Warning: kicad-cli netlist failed, nets may be incomplete: {e}",
                       file=sys.stderr)
         else:
-            print("  Warning: kicad-cli not available; net connectivity not resolved.",
+            print("  Warning: kicad-cli not available; net connectivity not resolved.\n"
+                  "  If KiCad is installed via Flatpak, see README for wrapper setup.",
                   file=sys.stderr)
 
         analysis = analyze_schematic(sch)

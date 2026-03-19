@@ -138,5 +138,5 @@ tests/
 ## System requirements
 
 - Python 3.10+
-- KiCad 8+ with `kicad-cli` on PATH
+- KiCad 8+ with `kicad-cli` on PATH (Flatpak users: `kicad-cli` is not exposed on PATH — create a wrapper at `/usr/local/bin/kicad-cli` that runs `flatpak run --command=kicad-cli org.kicad.KiCad "$@"`)
 - uv (Python package manager)
