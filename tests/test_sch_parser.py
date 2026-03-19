@@ -60,6 +60,14 @@ def test_dnp_no_means_populate_true(tmp_path):
         (pin "1" (uuid "a2"))
         (instances (project "test" (path "/" (reference "R2") (unit 1))))
       )
+      (symbol (lib_id "Device:R") (at 0 0 0) (unit 1)
+        (dnp)
+        (property "Reference" "R3")
+        (property "Value" "10k")
+        (property "Footprint" "Resistor_SMD:R_0603_1608Metric")
+        (pin "1" (uuid "a3"))
+        (instances (project "test" (path "/" (reference "R3") (unit 1))))
+      )
     )"""
     sch_file = tmp_path / "test.kicad_sch"
     sch_file.write_text(sch_content)
@@ -67,3 +75,4 @@ def test_dnp_no_means_populate_true(tmp_path):
     comps = {c.ref: c for c in sch.components}
     assert comps["R1"].populate is True   # dnp no → populate
     assert comps["R2"].populate is False  # dnp yes → do not populate
+    assert comps["R3"].populate is False  # bare (dnp) KiCad 8 → do not populate
