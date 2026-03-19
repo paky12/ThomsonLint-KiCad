@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ThomsonLint Schematic Export",
+  "type": "object",
+  "required": ["thomsonlint_version", "export_date", "mode", "project", "components", "nets", "analysis"],
+  "properties": {
+    "thomsonlint_version": { "type": "string" },
+    "export_date": { "type": "string" },
+    "mode": { "type": "string", "const": "schematic" },
+    "project": {
+      "type": "object", "required": ["name", "sheets"],
+      "properties": { "name": { "type": "string" }, "variant": { "type": "string" }, "sheets": { "type": "integer" } }
+    },
+    "components": {
+      "type": "array",
+      "items": {
+        "type": "object", "required": ["ref", "value", "package", "populate", "type"],
+        "properties": { "ref": {"type":"string"}, "value": {"type":"string"}, "package": {"type":"string"}, "device": {"type":"string"}, "description": {"type":"string"}, "populate": {"type":"boolean"}, "type": {"type":"string"}, "attributes": {"type":"object"} }
+      }
+    },
+    "nets": {
+      "type": "array",
+      "items": {
+        "type": "object", "required": ["name", "is_power", "is_ground", "is_clock", "is_differential", "pins"],
+        "properties": { "name": {"type":"string"}, "class": {"type":"object"}, "is_power": {"type":"boolean"}, "is_ground": {"type":"boolean"}, "is_clock": {"type":"boolean"}, "is_differential": {"type":"boolean"}, "diff_pair_partner": {"type":["string","null"]}, "voltage_guess": {"type":["string","null"]},
+          "pins": { "type": "array", "items": { "type": "object", "required": ["part", "pin", "direction"], "properties": { "part": {"type":"string"}, "pin": {"type":"string"}, "direction": {"type":"string"} } } }
+        }
+      }
+    },
+    "analysis": {
+      "type": "object", "required": ["power_nets", "ground_nets", "clock_nets", "differential_pairs", "floating_inputs", "single_pin_nets"],
+      "properties": { "power_nets": {"type":"array","items":{"type":"string"}}, "ground_nets": {"type":"array","items":{"type":"string"}}, "clock_nets": {"type":"array","items":{"type":"string"}}, "differential_pairs": {"type":"array"}, "floating_inputs": {"type":"array"}, "single_pin_nets": {"type":"array","items":{"type":"string"}} }
+    }
+  }
+}

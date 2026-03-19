@@ -1,62 +1,81 @@
-# Contributing to the AI Hardware Design Review Knowledge Base
+# Contributing to ThomsonLint-KiCad
 
-Thanks for your interest in improving this project!
+## Getting Started
 
-This repository is intended to be a **living knowledge base and ontology** for AI-assisted hardware design review. Contributions from experienced hardware engineers, EDA tool builders, and ML practitioners are welcome.
+```bash
+git clone git@github.com:paky12/ThomsonLint-KiCad.git
+cd ThomsonLint-KiCad
+uv sync --dev
+uv run pytest tests/ -v
+```
 
----
+## Project Structure
 
-## Ways to Contribute
+This fork has two distinct layers:
 
-1. **Add or refine rules**
-   - Propose new rules for domains like:
-     - Power electronics
-     - RF / microwave
-     - Automotive / aerospace
-     - Safety-critical systems
-   - Improve descriptions, failure modes, or recommended actions.
+1. **Upstream (do not modify):** Ontology, knowledge base, examples, report generator — synced from `holla2040/ThomsonLint`
+2. **KiCad layer (our code):** Everything under `kicad/`, the MCP server, export schemas, and KiCad-specific tests
 
-2. **Extend the ontology**
-   - Add more detailed fields to `ontology/ontology.json`.
-   - Introduce new domains, component classes, or condition patterns.
+## Development Workflow
 
-3. **Add more examples**
-   - Contribute real-world or synthesized examples to `examples/examples.json`.
-   - Each example should:
-     - Describe the pattern.
-     - List triggered rules.
-     - Include the expected AI issue output.
+1. Create a feature branch from `development`
+2. Write tests first (`tests/test_*.py`)
+3. Implement the feature
+4. Run the full test suite: `uv run pytest tests/ -v`
+5. Commit with a descriptive message
+6. Push and open a PR against `development`
 
-4. **Improve documentation**
-   - Expand the main knowledge base in `docs/AI_Hardware_Design_Review_KnowledgeBase.md`.
-   - Add domain-specific appendices or diagrams.
+## What to Contribute
 
----
+### KiCad parser improvements
+- Support for more `.kicad_pcb` elements (arcs in board outline, keepout zones)
+- Better hierarchical schematic handling
+- KiCad version-specific quirks
 
-## Guidelines
+### Analyzer enhancements
+- More signal classification patterns
+- Better decoupling proximity heuristics
+- Thermal via detection
 
-- **Clarity first:** Rules and descriptions should be unambiguous and grounded in sound engineering practice.
-- **No proprietary info:** Do not add confidential or NDA-bound material.
-- **Keep it tool-neutral:** Avoid tying rules to any single EDA tool or vendor.
-- **Maintain machine-friendliness:** When editing the ontology or examples, ensure JSON remains valid and schemas are preserved.
+### Ontology/knowledge base extensions
+- New design rules (RF, automotive, safety-critical)
+- More examples mapping to existing rules
+- Improved rule descriptions
 
----
+**Note:** If you modify `ontology/ontology.json`, `examples/examples.json`, or the knowledge base, regenerate the review instructions:
+```bash
+./gen_context.sh > review_instructions.txt
+```
 
-## Process
+## Code Guidelines
 
-1. Fork the repository.
-2. Create a feature branch.
-3. Make your changes:
-   - Update relevant files (`docs/`, `ontology/`, `examples/`).
-4. Run any available validation scripts (if present in future).
-5. Open a pull request with:
-   - A clear description of your changes.
-   - Rationale and references, if applicable.
+- Pure Python — no heavy dependencies beyond `mcp` and `jsonschema`
+- Dataclasses for models, not Pydantic
+- All parsers take a file path and return a dataclass
+- All analyzers take a dataclass and return a dict
+- All exporters take a dataclass + analysis dict and return a JSON-compatible dict
+- Test against the JSON export schemas (`tests/sch_export_schema.json`, `tests/brd_export_schema.json`)
 
----
+## Running Tests
 
-## Code of Conduct
+```bash
+# All tests
+uv run pytest tests/ -v
 
-Be respectful, technically constructive, and open to feedback. The goal is to build a robust, high-quality shared knowledge base.
+# Single file
+uv run pytest tests/test_net_classifier.py -v
 
+# With coverage
+uv run pytest --cov=kicad --cov-report=html tests/
+```
 
+Tests that need `kicad-cli` installed use mocked subprocess calls so they run anywhere.
+
+> **Flatpak users:** If you installed KiCad via Flatpak, `kicad-cli` won't be on your PATH. Create a wrapper:
+> ```bash
+> sudo tee /usr/local/bin/kicad-cli << 'EOF'
+> #!/bin/sh
+> exec flatpak run --command=kicad-cli org.kicad.KiCad "$@"
+> EOF
+> sudo chmod +x /usr/local/bin/kicad-cli
+> ```
