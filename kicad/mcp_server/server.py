@@ -94,18 +94,6 @@ def export_kicad_project_impl(project_path: str) -> dict:
         analysis = analyze_board(board)
         result["board"] = export_board(board, analysis)
 
-    # Run DRC if kicad-cli is available and we have a PCB
-    if pcb_path and os.path.exists(pcb_path) and cli_available:
-        try:
-            pcb_dir = str(Path(pcb_path).parent)
-            drc_tmp = os.path.join(pcb_dir, f".thomsonlint_drc_{os.getpid()}.json")
-            cli.run_drc(pcb_path, drc_tmp)
-            with open(drc_tmp) as f:
-                result["drc"] = json.load(f)
-            os.unlink(drc_tmp)
-        except Exception:
-            pass  # DRC is best-effort
-
     if not result:
         raise ValueError(f"No KiCad project files found at: {project_path}")
 
@@ -233,17 +221,19 @@ def run_server():
         """Export a KiCad project for design review. CALL THIS FIRST.
 
         Parses schematic and PCB, runs analysis (net classification, decoupling
-        proximity, edge distances, trace stats), enriches with kicad-cli netlist,
-        and runs DRC automatically.
+        proximity, edge distances, trace stats), and enriches with kicad-cli
+        netlist data.
 
         After this, call get_review_context() to load the 158 engineering rules,
-        then review the design against those rules.
+        then review the design against those rules. Focus on engineering-level
+        analysis (power/signal integrity, EMC, thermal, protection, testability)
+        — do NOT duplicate KiCad's built-in DRC.
 
         Args:
             project_path: Path to .kicad_pro file or project directory.
 
         Returns:
-            Dict with 'schematic', 'board', and 'drc' data.
+            Dict with 'schematic' and 'board' data.
         """
         return export_kicad_project_impl(project_path)
 
@@ -268,11 +258,11 @@ def run_server():
 
     @mcp.tool()
     def run_drc(pcb_path: str) -> dict:
-        """Run KiCad Design Rule Check on a PCB file.
+        """Run KiCad Design Rule Check on a PCB file. OPTIONAL.
 
-        Returns violations, unconnected nets, and other DRC results.
-        This is also automatically included in export_kicad_project output,
-        so you only need this for standalone DRC checks.
+        Only use this if the user explicitly asks for DRC results. The main
+        design review (export + get_review_context) focuses on engineering-level
+        analysis beyond standard DRC.
 
         Args:
             pcb_path: Path to a .kicad_pcb file.

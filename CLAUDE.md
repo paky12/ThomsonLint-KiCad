@@ -12,12 +12,26 @@ The fork adds a `kicad/` Python package (parsers, analyzers, exporters) and an M
 
 When asked to review a KiCad design, use the ThomsonLint MCP tools in this order:
 
-1. **`export_kicad_project(project_path)`** — exports schematic, board, and DRC data
+1. **`export_kicad_project(project_path)`** — exports schematic and board data
 2. **`get_review_context()`** — loads the 158 engineering rules and knowledge base
 3. Review the exported data against the rules, referencing specific rule IDs
 4. **`generate_report(findings_json)`** — generates an interactive HTML report
 
-Do NOT use `uv run thomsonlint export` from bash — use the MCP tools instead. They handle Flatpak compatibility, DRC integration, and return structured data directly.
+Do NOT use `uv run thomsonlint export` from bash — use the MCP tools instead. They handle Flatpak compatibility and return structured data directly.
+
+### Review focus
+
+Do NOT duplicate KiCad's built-in DRC — focus on engineering-level analysis:
+
+- **Electrical best practices** — wiring correctness, electrical rule violations
+- **Power integrity** — voltage stability, decoupling, power distribution
+- **Signal integrity** — impedance, reflections, crosstalk, return paths
+- **Grounding** — strategy and return path continuity
+- **EMI/EMC** — risks and mitigation
+- **Thermal** — power dissipation, thermal management
+- **PCB stackup & layout** — layer usage, constraints
+- **Protection & robustness** — ESD, overvoltage, reverse polarity
+- **Testability** — debug access, test points
 
 ## Commands
 

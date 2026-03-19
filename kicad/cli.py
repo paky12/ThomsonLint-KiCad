@@ -113,20 +113,6 @@ def cmd_export(args):
             json.dump(export, f, indent=2)
         print(f"Board export saved: {pcb_out}")
 
-        # Run DRC if kicad-cli is available
-        drc_cli = KiCadCLI()
-        if drc_cli.is_available():
-            try:
-                pcb_dir = str(Path(pcb_path).parent)
-                drc_tmp = os.path.join(pcb_dir, f".thomsonlint_drc_{os.getpid()}.json")
-                drc_cli.run_drc(pcb_path, drc_tmp)
-                import shutil
-                drc_out = os.path.join(args.output, f"{project_name}_drc.json")
-                shutil.move(drc_tmp, drc_out)
-                print(f"DRC report saved: {drc_out}")
-            except Exception as e:
-                print(f"  Warning: DRC failed: {e}", file=sys.stderr)
-
 
 def cmd_serve(args):
     """Start the MCP server."""
