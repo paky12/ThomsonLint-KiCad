@@ -11,10 +11,10 @@ Analyzes your schematics and PCB layouts against 158 engineering rules covering 
 ```bash
 git clone git@github.com:paky12/ThomsonLint-KiCad.git
 cd ThomsonLint-KiCad
-pip install -e .
+uv sync
 ```
 
-Requires **Python 3.10+** and **KiCad 8+** (with `kicad-cli` on PATH).
+Requires [uv](https://docs.astral.sh/uv/), **Python 3.10+**, and **KiCad 8+** (with `kicad-cli` on PATH).
 
 ### 2. Use with Claude Code (recommended)
 
@@ -24,8 +24,8 @@ Add the MCP server to your Claude Code config (`~/.claude/settings.json`):
 {
   "mcpServers": {
     "thomsonlint": {
-      "command": "thomsonlint",
-      "args": ["serve"]
+      "command": "uv",
+      "args": ["--directory", "/path/to/ThomsonLint-KiCad", "run", "thomsonlint", "serve"]
     }
   }
 }
@@ -47,10 +47,10 @@ That's it. No manual exporting, no prompt engineering.
 
 ```bash
 # Export KiCad project to ThomsonLint JSON
-thomsonlint export ~/projects/my-board/my-board.kicad_pro --output ./exports/
+uv run thomsonlint export ~/projects/my-board/my-board.kicad_pro --output ./exports/
 
 # Generate HTML report from review findings
-thomsonlint report findings.json --output ./exports/
+uv run thomsonlint report findings.json --output ./exports/
 ```
 
 The exported JSONs can be fed to any LLM along with `review_instructions.txt` for a manual review.
@@ -107,11 +107,12 @@ When running as an MCP server (`thomsonlint serve`), three tools are available:
 
 ## Requirements
 
+- [**uv**](https://docs.astral.sh/uv/) — Python package manager
 - **Python 3.10+**
 - **KiCad 8+** with `kicad-cli` on PATH
 - **Claude Code** (for the MCP integration)
 
-Python dependencies (installed automatically):
+Python dependencies (managed by uv):
 - `mcp` — Anthropic MCP SDK
 - `jsonschema` — JSON validation
 
@@ -119,13 +120,13 @@ Python dependencies (installed automatically):
 
 ```bash
 # Install with dev dependencies
-pip install -e ".[dev]"
+uv sync --dev
 
 # Run tests
-pytest tests/ -v
+uv run pytest tests/ -v
 
 # Run tests with coverage
-pytest --cov=kicad --cov-report=html tests/
+uv run pytest --cov=kicad --cov-report=html tests/
 ```
 
 ## Credits
