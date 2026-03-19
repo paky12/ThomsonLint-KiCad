@@ -60,6 +60,8 @@ def export_board(board: Board, analysis: dict) -> dict:
         }
         if fp.footprint_lib:
             entry["footprint"] = fp.footprint_lib
+        if fp.value:
+            entry["value"] = fp.value
         components_out.append(entry)
 
     # ── board block ──────────────────────────────────────────────────────────

@@ -35,6 +35,15 @@ def test_export_structure():
     assert result["board"]["layer_count"] == 2
     assert result["board"]["area"]["width_mm"] == 50.0
 
+def test_component_has_value():
+    board = _make_board()
+    # Set value on first footprint
+    board.footprints[0].value = "AMS1117-3.3"
+    analysis = analyze_board(board)
+    export = export_board(board, analysis)
+    u1 = next(c for c in export["components"] if c["ref"] == "U1")
+    assert u1["value"] == "AMS1117-3.3"
+
 def test_trace_segments_conditional():
     board = _make_board()
     analysis = analyze_board(board)

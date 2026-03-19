@@ -21,6 +21,7 @@ class Footprint:
     rotation: float = 0.0
     side: str = "top"  # "top" or "bottom"
     pads: list[Pad] = field(default_factory=list)
+    value: str = ""
 
 
 @dataclass

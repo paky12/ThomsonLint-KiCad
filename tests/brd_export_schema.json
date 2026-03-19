@@ -19,7 +19,8 @@
           "rotation": { "type": "number" },
           "side": { "type": "string" },
           "type": { "type": "string" },
-          "footprint": { "type": "string" }
+          "footprint": { "type": "string" },
+          "value": { "type": "string" }
         }
       }
     },

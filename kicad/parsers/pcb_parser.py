@@ -101,12 +101,14 @@ def _parse_footprint(fp_node: list) -> Footprint:
     layer_name = layer_node[1] if layer_node and len(layer_node) > 1 else "F.Cu"
     side = "bottom" if "B.Cu" in str(layer_name) else "top"
 
-    # Reference: search properties for "Reference"
+    # Reference and Value: search properties
     ref = ""
+    value = ""
     for prop in _find_children(fp_node, "property"):
         if len(prop) > 1 and prop[1] == "Reference" and len(prop) > 2:
             ref = str(prop[2])
-            break
+        elif len(prop) > 1 and prop[1] == "Value" and len(prop) > 2:
+            value = str(prop[2])
 
     # Pads
     pads = []
@@ -122,6 +124,7 @@ def _parse_footprint(fp_node: list) -> Footprint:
         rotation=fp_rot,
         side=side,
         pads=pads,
+        value=value,
     )
 
 
