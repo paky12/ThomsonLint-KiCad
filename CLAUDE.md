@@ -8,6 +8,17 @@ ThomsonLint-KiCad is a fork of [ThomsonLint](https://github.com/holla2040/Thomso
 
 The fork adds a `kicad/` Python package (parsers, analyzers, exporters) and an MCP server. The upstream knowledge base (ontology, rules, examples, report generator) is kept unchanged.
 
+## Reviewing a KiCad Design
+
+When asked to review a KiCad design, use the ThomsonLint MCP tools in this order:
+
+1. **`export_kicad_project(project_path)`** — exports schematic, board, and DRC data
+2. **`get_review_context()`** — loads the 158 engineering rules and knowledge base
+3. Review the exported data against the rules, referencing specific rule IDs
+4. **`generate_report(findings_json)`** — generates an interactive HTML report
+
+Do NOT use `uv run thomsonlint export` from bash — use the MCP tools instead. They handle Flatpak compatibility, DRC integration, and return structured data directly.
+
 ## Commands
 
 ```bash
@@ -23,13 +34,10 @@ uv run pytest tests/test_net_classifier.py -v
 # Run with coverage
 uv run pytest --cov=kicad --cov-report=html tests/
 
-# Export a KiCad project to ThomsonLint JSON
+# Export a KiCad project to ThomsonLint JSON (CLI alternative to MCP)
 uv run thomsonlint export path/to/project.kicad_pro --output ./exports/
 
-# Start the MCP server
-uv run thomsonlint serve
-
-# Generate HTML report from findings
+# Generate HTML report from findings (CLI alternative to MCP)
 uv run thomsonlint report findings.json --output ./exports/
 
 # Validate upstream JSON files (ontology, examples)
@@ -61,7 +69,7 @@ kicad/
   kicad_cli.py          # Wrapper around kicad-cli subprocess calls
   cli.py                # CLI entry point (export, serve, report)
   mcp_server/
-    server.py           # MCP server with 3 tools (export, review context, report)
+    server.py           # MCP server with 4 tools (export, review context, report, DRC)
 ```
 
 ### Data flow
