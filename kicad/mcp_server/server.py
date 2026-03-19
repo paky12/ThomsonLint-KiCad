@@ -57,12 +57,15 @@ def export_kicad_project_impl(project_path: str) -> dict:
 
     project_name = Path(sch_path or pcb_path or project_path).stem
 
+    # Initialize kicad-cli once for all uses (netlist, DRC, etc.)
+    cli = KiCadCLI()
+    cli_available = cli.is_available()
+
     if sch_path and os.path.exists(sch_path):
         sch = parse_schematic(sch_path)
 
         # Try kicad-cli netlist for net connectivity
-        cli = KiCadCLI()
-        if cli.is_available():
+        if cli_available:
             try:
                 # Use project dir for temp file — Flatpak can't write to /tmp
                 sch_dir = str(Path(sch_path).parent)
@@ -90,6 +93,18 @@ def export_kicad_project_impl(project_path: str) -> dict:
         board = parse_pcb(pcb_path)
         analysis = analyze_board(board)
         result["board"] = export_board(board, analysis)
+
+    # Run DRC if kicad-cli is available and we have a PCB
+    if pcb_path and os.path.exists(pcb_path) and cli_available:
+        try:
+            pcb_dir = str(Path(pcb_path).parent)
+            drc_tmp = os.path.join(pcb_dir, f".thomsonlint_drc_{os.getpid()}.json")
+            cli.run_drc(pcb_path, drc_tmp)
+            with open(drc_tmp) as f:
+                result["drc"] = json.load(f)
+            os.unlink(drc_tmp)
+        except Exception:
+            pass  # DRC is best-effort
 
     if not result:
         raise ValueError(f"No KiCad project files found at: {project_path}")
@@ -182,6 +197,31 @@ def generate_report_impl(findings_json: str) -> str:
     return str(exports_dir)
 
 
+def run_drc_impl(pcb_path: str) -> dict:
+    """Run KiCad DRC on a PCB file and return the results."""
+    from kicad.kicad_cli import KiCadCLI, KiCadCLIError
+
+    cli = KiCadCLI()
+    if not cli.is_available():
+        raise RuntimeError(
+            "kicad-cli not found. Install KiCad or see README for Flatpak setup."
+        )
+
+    p = Path(pcb_path)
+    if not p.exists():
+        raise FileNotFoundError(f"PCB file not found: {pcb_path}")
+
+    # Use PCB directory for temp file (Flatpak can't write to /tmp)
+    drc_tmp = str(p.parent / f".thomsonlint_drc_{os.getpid()}.json")
+    try:
+        cli.run_drc(str(p), drc_tmp)
+        with open(drc_tmp) as f:
+            return json.load(f)
+    finally:
+        if os.path.exists(drc_tmp):
+            os.unlink(drc_tmp)
+
+
 def run_server():
     """Create and run the FastMCP server with ThomsonLint tools."""
     from mcp.server.fastmcp import FastMCP
@@ -190,34 +230,71 @@ def run_server():
 
     @mcp.tool()
     def export_kicad_project(project_path: str) -> dict:
-        """Export a KiCad project (schematic + PCB) to structured JSON for AI review.
+        """Export a KiCad project for design review. CALL THIS FIRST.
+
+        Parses schematic and PCB, runs analysis (net classification, decoupling
+        proximity, edge distances, trace stats), enriches with kicad-cli netlist,
+        and runs DRC automatically.
+
+        After this, call get_review_context() to load the 158 engineering rules,
+        then review the design against those rules.
 
         Args:
-            project_path: Path to a .kicad_pro, .kicad_sch, .kicad_pcb, or project directory.
+            project_path: Path to .kicad_pro file or project directory.
 
         Returns:
-            Dict with 'schematic' and/or 'board' export data.
+            Dict with 'schematic', 'board', and 'drc' data.
         """
         return export_kicad_project_impl(project_path)
 
     @mcp.tool()
     def get_review_context(section: str = "all") -> str:
-        """Get ThomsonLint review instructions and design rule ontology.
+        """Load the ThomsonLint engineering knowledge base. CALL THIS SECOND.
+
+        Returns 158 design rules across 10 domains (Power, HighSpeed, Analog,
+        EMC, DFM, DFT, Thermal, Component, Schematic, Mechanical) plus detailed
+        engineering guidance.
+
+        Use AFTER export_kicad_project. Review the exported data against these
+        rules. Each finding should reference a specific rule_id.
 
         Args:
-            section: Which context to return — 'all', 'instructions', 'ontology', or 'docs'.
+            section: 'all' (default), 'instructions', 'ontology', or 'docs'.
 
         Returns:
-            String containing the requested context.
+            Review instructions and engineering knowledge base.
         """
         return get_review_context_impl(section)
 
     @mcp.tool()
-    def generate_report(findings_json: str) -> str:
-        """Generate an HTML review report from ThomsonLint findings JSON.
+    def run_drc(pcb_path: str) -> dict:
+        """Run KiCad Design Rule Check on a PCB file.
+
+        Returns violations, unconnected nets, and other DRC results.
+        This is also automatically included in export_kicad_project output,
+        so you only need this for standalone DRC checks.
 
         Args:
-            findings_json: JSON string containing findings (project_name + issues array).
+            pcb_path: Path to a .kicad_pcb file.
+
+        Returns:
+            Dict with 'violations', 'unconnected_items', etc.
+        """
+        return run_drc_impl(pcb_path)
+
+    @mcp.tool()
+    def generate_report(findings_json: str) -> str:
+        """Generate an HTML report from review findings. CALL THIS LAST.
+
+        Takes a JSON string with project_name and issues array. Each issue needs:
+        rule_id, severity (Critical/Major/Minor/Advisory), domain, summary.
+
+        Example: {"project_name": "my_board", "review_date": "2026-03-19",
+                  "issues": [{"rule_id": "PWR_DECPL_001", "severity": "Major",
+                  "domain": "Power", "summary": "Missing decoupling on U1"}]}
+
+        Args:
+            findings_json: JSON string with findings.
 
         Returns:
             Path to the generated HTML report file.
