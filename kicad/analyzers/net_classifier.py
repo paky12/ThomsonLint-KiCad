@@ -127,6 +127,7 @@ def _guess_interface(upper: str) -> str:
 
 
 _MULTI_CHAR_PREFIXES = [
+    ("IC", "IC"),
     ("FB", "ferrite_bead"),
     ("TP", "test_point"),
     ("SW", "switch"),
@@ -144,9 +145,15 @@ def classify_component(ref: str, description: str = "") -> str:
     if not ref:
         return "unknown"
 
+    upper_ref = ref.upper()
+
     for prefix, comp_type in _MULTI_CHAR_PREFIXES:
-        if ref.upper().startswith(prefix):
+        if upper_ref.startswith(prefix):
             return comp_type
+
+    # Refs containing "conn" are connectors (e.g., FP_conn1, Keypad_conn1)
+    if "CONN" in upper_ref:
+        return "connector"
 
     first = ref[0].upper()
 

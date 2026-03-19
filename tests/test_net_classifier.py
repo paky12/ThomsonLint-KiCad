@@ -192,5 +192,20 @@ class TestClassifyComponent:
         assert classify_component("Y1", "") == "crystal"
         assert classify_component("X1", "") == "crystal"
 
+    def test_ic_prefix(self):
+        assert classify_component("IC1") == "IC"
+
+    def test_ic7_prefix(self):
+        assert classify_component("IC7") == "IC"
+
+    def test_conn_in_ref(self):
+        assert classify_component("FP_conn1") == "connector"
+
+    def test_keypad_conn(self):
+        assert classify_component("Keypad_conn1") == "connector"
+
+    def test_sc50_conn(self):
+        assert classify_component("SC50_conn1") == "connector"
+
     def test_unknown(self):
         assert classify_component("Z1", "") == "other"
