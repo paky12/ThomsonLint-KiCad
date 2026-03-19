@@ -140,6 +140,10 @@ def _parse_pad(pad_node: list, fp_x: float, fp_y: float, fp_rot: float) -> Pad:
     abs_x = fp_x + rot_x
     abs_y = fp_y + rot_y
 
+    # Drill size: (drill diameter)
+    drill_node = _find_child(pad_node, "drill")
+    drill_mm = float(drill_node[1]) if drill_node and len(drill_node) > 1 else 0.0
+
     # Net inside pad: (net code name)
     net_code = 0
     net_name = ""
@@ -158,6 +162,7 @@ def _parse_pad(pad_node: list, fp_x: float, fp_y: float, fp_rot: float) -> Pad:
         y_mm=abs_y,
         net_code=net_code,
         net_name=net_name,
+        drill_mm=drill_mm,
     )
 
 
@@ -338,6 +343,12 @@ def parse_pcb(file_path: str) -> Board:
                         y_mm=float(at_node[2]) if len(at_node) > 2 else 0.0,
                         drill_mm=float(drill_node[1]) if drill_node and len(drill_node) > 1 else 0.0,
                     ))
+
+    # Also extract mounting holes from footprints with np_thru_hole pads
+    for fp in footprints:
+        for pad in fp.pads:
+            if pad.type == "np_thru_hole":
+                holes.append(Hole(x_mm=pad.x_mm, y_mm=pad.y_mm, drill_mm=pad.drill_mm))
 
     # Board outline: prefer gr_rect, fall back to gr_lines
     outline = _parse_outline_from_gr_rect(nodes)

@@ -9,6 +9,7 @@ class Pad:
     y_mm: float = 0.0
     net_code: int = 0
     net_name: str = ""
+    drill_mm: float = 0.0
 
 
 @dataclass

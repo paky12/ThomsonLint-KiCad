@@ -89,3 +89,24 @@ def test_nets():
     board = parse_pcb(FIXTURE_PCB)
     assert len(board.nets) > 0
     assert 0 in board.nets
+
+
+def test_mounting_holes_from_footprints(tmp_path):
+    """Mounting holes are footprints with np_thru_hole pads."""
+    pcb_content = """(kicad_pcb (version 20240108) (generator "test")
+      (layers (0 "F.Cu" signal) (31 "B.Cu" mixed))
+      (net 0 "")
+      (footprint "MountingHole:MountingHole_3.2mm" (at 10 20) (layer "F.Cu")
+        (fp_text reference "H1" (at 0 0) (layer "F.SilkS") (effects (font (size 1 1) (thickness 0.15))))
+        (pad "" np_thru_hole circle (at 0 0) (size 3.2 3.2) (drill 3.2) (layers "*.Cu" "*.Mask"))
+      )
+      (gr_rect (start 0 0) (end 50 50) (layer "Edge.Cuts") (width 0.05))
+    )"""
+    pcb_file = tmp_path / "test.kicad_pcb"
+    pcb_file.write_text(pcb_content)
+    board = parse_pcb(str(pcb_file))
+    assert len(board.holes) >= 1
+    hole = board.holes[0]
+    assert abs(hole.x_mm - 10.0) < 0.01
+    assert abs(hole.y_mm - 20.0) < 0.01
+    assert abs(hole.drill_mm - 3.2) < 0.01
