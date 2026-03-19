@@ -257,22 +257,6 @@ def run_server():
         return get_review_context_impl(section)
 
     @mcp.tool()
-    def run_drc(pcb_path: str) -> dict:
-        """Run KiCad Design Rule Check on a PCB file. OPTIONAL.
-
-        Only use this if the user explicitly asks for DRC results. The main
-        design review (export + get_review_context) focuses on engineering-level
-        analysis beyond standard DRC.
-
-        Args:
-            pcb_path: Path to a .kicad_pcb file.
-
-        Returns:
-            Dict with 'violations', 'unconnected_items', etc.
-        """
-        return run_drc_impl(pcb_path)
-
-    @mcp.tool()
     def generate_report(findings_json: str) -> str:
         """Generate an HTML report from review findings. CALL THIS LAST.
 
